@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PaginationDto, pageMeta } from '../common/dto/pagination.dto';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -11,6 +11,9 @@ export class WalletService {
   }
 
   topup(userId: number, amount: number) {
+    if (!amount || amount <= 0) {
+      throw new BadRequestException('Top-up amount must be greater than zero');
+    }
     return this.db.$transaction(async (tx) => {
       const w = await tx.wallet.update({ where: { userId }, data: { balance: { increment: amount } } });
       await tx.transaction.create({ data: { walletId: w.id, type: 'TOPUP', amount } });
