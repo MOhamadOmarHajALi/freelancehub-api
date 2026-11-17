@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.enableCors({ origin: ['http://localhost:3001', 'http://127.0.0.1:3001'] });
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true },
   }));

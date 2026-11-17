@@ -37,11 +37,13 @@ export class ProjectsService {
 
   async create(ownerId: number, d: ProjectDto, attachment: string | null) {
     if (!(await this.db.category.findUnique({ where: { id: d.categoryId } }))) throw new BadRequestException('Unknown category');
+    await this.assertCanAfford(ownerId, d.budget);   // الميزانية لا تتجاوز الرصيد المتاح
     return this.db.project.create({ data: { ...d, ownerId, attachment } });
   }
 
   async update(ownerId: number, id: number, d: UpdateProjectDto) {
     await this.assertOwnerAndOpen(id, ownerId);
+    if (d.budget !== undefined) await this.assertCanAfford(ownerId, d.budget);   // لا يرفع الميزانية فوق رصيده
     const r = await this.db.project.updateMany({ where: { id, status: 'OPEN' }, data: d });
     if (!r.count) throw new ConflictException('Project is no longer open');
     return this.db.project.findUnique({ where: { id } });
@@ -52,6 +54,12 @@ export class ProjectsService {
     const r = await this.db.project.deleteMany({ where: { id, status: 'OPEN' } });
     if (!r.count) throw new ConflictException('Project is no longer open');
     return { deleted: true };
+  }
+
+  /** الميزانية لا تتجاوز الرصيد المتاح في المحفظة */
+  private async assertCanAfford(ownerId: number, budget: number) {
+    const w = await this.db.wallet.findUnique({ where: { userId: ownerId } });
+    if (!w || w.balance.lt(budget)) throw new BadRequestException('Insufficient balance for budget');
   }
 
   private async assertOwnerAndOpen(id: number, uid: number) {

@@ -21,7 +21,7 @@ export class UsersController {
 
   @Post('profile/avatar') @Auth('FREELANCER')
   @ApiConsumes('multipart/form-data') @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } }, required: ['file'] } })
-    @UseInterceptors(FileInterceptor('file', uploadOptions('public', IMAGES, 2)))   // صورة فقط ≤ 2MB
+    @UseInterceptors(FileInterceptor('file', uploadOptions('public', IMAGES, 10)))   // صورة فقط ≤ 2MB
   avatar(@CurrentUser() u: JwtUser, @UploadedFile() f?: Express.Multer.File) {
     if (!f) throw new BadRequestException('file is required');
     return this.service.setAvatar(u.id, `/files/${f.filename}`);
