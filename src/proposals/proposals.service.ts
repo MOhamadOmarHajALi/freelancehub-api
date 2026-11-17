@@ -42,4 +42,5 @@ export class ProposalsService {
     if (!r.count) throw new ConflictException('Proposal can no longer be edited');
     return this.db.proposal.findUnique({ where: { id } });
   }
+  
 }
