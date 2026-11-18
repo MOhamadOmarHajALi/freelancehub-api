@@ -34,30 +34,14 @@ export class ProjectsService {
     if (!p) throw new NotFoundException();
     return p;
   }
-async create(ownerId: number, d: ProjectDto, attachment: string | null) {
-  // 1. التحقق من وجود التصنيف
-  const category = await this.db.category.findUnique({ where: { id: d.categoryId } });
-  if (!category) throw new BadRequestException('Unknown category');
-
-  // 2. استخدام Transaction لضمان تجميد الرصيد وإنشاء المشروع معاً
-  return await this.db.$transaction(async (tx) => {
-    // جلب المحفظة مع قفل الصف إن أمكن أو التحقق بدقة داخل المعاملة
-    const wallet = await tx.wallet.findUnique({ where: { userId: ownerId } });
-    if (!wallet || wallet.balance.lt(d.budget)) {
-      throw new BadRequestException('Insufficient balance for budget');
-    }
-
-    await tx.wallet.update({
-      where: { userId: ownerId },
-      data: { balance: { decrement: d.budget } },
+  async create(ownerId: number, d: ProjectDto, attachment: string | null) {
+    return this.db.$transaction(async (tx) => {
+      if (!(await tx.category.findUnique({ where: { id: d.categoryId } }))) throw new BadRequestException('Unknown category');
+      const w = await tx.wallet.findUnique({ where: { userId: ownerId } });
+      if (!w || w.balance.lt(d.budget)) throw new BadRequestException('Insufficient balance for budget');
+      return tx.project.create({ data: { ...d, ownerId, attachment } });
     });
-
-    // إنشاء المشروع
-    return await tx.project.create({ 
-      data: { ...d, ownerId, attachment } 
-    });
-  });
-}
+  }
 
   async update(ownerId: number, id: number, d: UpdateProjectDto) {
     await this.assertOwnerAndOpen(id, ownerId);
